@@ -2,302 +2,244 @@
 
 ### 预处理大致思路
 
-- 对中低级
-  - 灰度后直接Canny即可进行findContours
+- 中低级图片的识别
+  - 将输入图片利用inrange函数进行二值化处理，使用Canny边缘检测器对二值化后的图像进行检测，接着进行开闭操作处理后findcontours.
 
 - 对高级
-  - 由于椒盐噪声多,所以先进行中值滤波,然后将图像转为hsv后获取背景h值,利用h值进行二值化后 进行开闭运算处理噪声,之后再canny加findContours
+  - 由于笔者高级图片的识别办法运用到了直方图等知识，笔者将在此详细对代码进行解读
+  - 首先，定义一个名为“drawHist”的函数，统计图像的像素信息，每个颜色级像素的数量是多少，占整幅图像的比例。它接受一个输入图像并返回图像中的主导颜色的值。这个函数首先使用OpenCV的cvtColor函数将输入图像转换为HSV颜色空间。然后，它使用calcHist函数创建一个色调通道的直方图， 统计每个颜色值级别的像素一共有多少，并使用minMaxLoc函数找到具有最高值的bin的索引。这个bin的相应的Hue值被作为图像的主色调返回。
+  - 接下来，定义了一个名为ShapeDetector的类，它的构造函数将图像路径作为输入。这个类也有一个名为detectShapes的函数，在输入的图像上执行形状检测算法。
+  - 在detectShapes函数中，使用OpenCV的imread函数读取输入图像。然后使用各种OpenCV函数对图像进行预处理。首先，使用cvtColor将其转换为HSV颜色空间。
+  - 然后，使用中值模糊函数，应用中值模糊滤波器来减少噪音。使用inRange函数对图像施加二进制阈值，将图像分割成颜色相似的区域。
+  - 阈值处理后，对图像进行形态学操作，以去除小的噪声区域，并使用morphologyEx函数填补形状中的空白。
+  - 然后将得到的二进制图像分成三个颜色通道（色相、饱和度和值），并使用drawHist函数计算每个通道的直方图。
+  - 接下来，三个颜色通道被迭代，与每个通道的主色不匹配的像素被设置为白色，而其余的则使用bitwise_not和bitwise_and函数设置为黑色。
+  - 使用morphologyEx函数对得到的二进制图像再次进行形态学操作，以减少噪音并填补形状中的空白。
+  - 最后，使用findContours函数在二进制图像中找到轮廓，并使用 approxPolyDP函数对每个轮廓进行近似处理。得到的多边形被存储在一个名为conPoly的向量中，其边界矩形被存储在一个名为boundRect的向量中。 然后，代码通过迭代conPoly中的多边形，并使用多边形顶点上的size函数计算边数，从而计算出具有多个顶点的形状的数量。计数结果用cout函数打印到控制台。
+  - 总的来说，这段代码实现了一种形状检测算法，它使用OpenCV的图像处理功能对输入图像进行分割和预处理，提取每个颜色通道的主导颜色，隔离颜色相似的区域，并将得到的形状近似为多边形。
 
-> 对高级用了滑动条进行调参
->
-> median_blur , h_high , h_low, size , size_1 , dilate_size;
->
-> 中值滤波参数 , inRange处理的h上下偏差 , 闭运算 , 开运算 , 扩张系数
 
 ### 对于图形的判断
 
-- findContours后对获取的点进行approxPolyDP来获得角点,并利用角点判断图形
+- 使用findContours函数在二进制图像中找到轮廓，并使用 approxPolyDP函数对每个轮廓进行近似处理。得到的多边形被存储在一个名为conPoly的向量中，其边界矩形被存储在一个名为boundRect的向量中。 然后，代码通过迭代conPoly中的多边形，并使用多边形顶点上的size函数计算边数，从而计算出具有3、4、5个顶点的形状的数量。计数结果用cout函数打印到控制台。
 
 ### headline.h
 
 - 包含了运行所需要的头文件
 
   ```c++
-  #pragma once
-  #include<iostream>
-  #include<opencv2/opencv.hpp>
-  
-  using namespace cv;
+  #include <opencv2/imgcodecs.hpp>
+#include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
+#include <iostream>
+
+using namespace cv;
+using namespace std;
   using namespace std;
   ```
 
-### get_contours
+### get_contours.h
+```c++
+ #include"headlines.h"
+
+int drawHist(Mat image);//定义绘制直方图函数
+
+class ShapeDetector//定义类和类中函数
+{
+public:
+
+	ShapeDetector(string imagePath)
+	{
+		this->imagePath = imagePath;
+	}
+
+	void detectShapes();
+
+private:
+
+	string imagePath;
+	
+};
+  ```
 
 #### 类:
 
 ```C++
-class myimg
+class ShapeDetector
 {
 public:
 
-	void load_img(Mat image);//加载处理图像
+	ShapeDetector(string imagePath)
+	{
+		this->imagePath = imagePath;
+	}
 
-	void load_img_draw(Mat image);//加载显示图像
-
-	Mat get_img();//获取处理图像
-	
-	Mat get_img_draw();//获取显示图像
-
-	double load_h();//获得背景h值
-
-	double get_h();//调用h值
-
-	void test_pre(int median_blur ,int h_high ,int h_low ,int size,int size_1,int dilate_size);//对高级图像的预处理
-
-	void low_pre();//对低级图像的预处理
-
-	void get_contours();//获取轮廓
-
-	void test_high_treat(string path, int median_blur, int h_high, int h_low,int size,int size_1, int dilate_size);//对高级图像的处理(包含test_pre与get_contours)
-
-	void test_low_treat(string path);//对低级和中级图像的处理(包含low_pre与get_contours)
-	
-	void show_result(string name);//显示识别后图像
+	void detectShapes();
 
 private:
-	Mat img;//处理图像
-	Mat img_draw;//显示图像
-	double h;//将背景转为hsv后的h值
-	vector<vector<Point>> contours;//存放角点
-	vector<Vec4i> hierarchy;
+
+	string imagePath;
+	
 };
 ```
 
 
-
-> define Run用于显示处理过程(若需显示则注释掉这句话)
-
 #### 函数详情:
 
-##### load_h
+##### drawHist
 
 ```C++
-double myimg::load_h()
+//绘制直方图
+//直方图就是用来统计图像的像素信息的，每个颜色级像素的数量是多少，占整幅图像的比例
+int drawHist(Mat image)
 {
-	if (img.empty())//判空
-	{
-		cout << "could not find image..." << endl;
-		return -1;
-	}
+    int numbins = 256;
+    float range[] = { 0, 256 }; //定义一个浮点型的一维数组，含两个值
+    const float* histRange = { range };//直方图均衡化
+    Mat hist;
 
-	Mat hsvImg;
-	cvtColor(img, hsvImg, COLOR_BGR2HSV);
-	waitKey(1);
-	h = hsvImg.at<Vec3b>(1, 1)[0];//获取h值
-    return h；
+    calcHist(&image, 1, 0, Mat(), hist, 1, &numbins, &histRange);//计算图像直方图 统计每个颜色值级别的像素一共有多少
+
+    int width = 512;
+    int height = 300;
+
+    Mat histImage(height, width, CV_8UC3, Scalar(20, 20, 20));
+
+    float max = 0;
+    int nn = 0;
+    for (int i = 0; i < numbins; i++)
+    {
+        if (max < hist.at<float>(i))
+        {
+            nn = i;
+            max = hist.at<float>(i);
+        }
+    }
+    return nn;
 }
 ```
 
-##### test_pre
+##### detectShapes
 
 ```C++
-void myimg::test_pre(int median_blur, int h_high, int h_low,int size,int size_1, int dilate_size)
-{
-	Mat kernel = getStructuringElement(MORPH_RECT, Size(size,size));//闭运算核
-	Mat kernel1 = getStructuringElement(MORPH_RECT, Size(size_1,size_1));//开运算核
+//该类函数为程序主要实现代码，整体逻辑性强，为便于读者阅读，故将其做一个函数书写。且这样书写后，main函数的书写非常简便
+void ShapeDetector::detectShapes() {
+    //Preprocessing
+    Mat img = imread(this->imagePath);
+    Mat img0 = img.clone();//拷贝图片 方式为深拷贝
+    
+    cvtColor(img, imgGray, COLOR_BGR2GRAY);//Blue... to Gray
 
-	medianBlur(img, img, median_blur);//中值滤波
-	
-	load_h();//获取背景h值
-	
-	cvtColor(img, img, COLOR_BGR2HSV);//转hsv
-	
-	int hmin = h - h_low, smin = 0, vmin = 0;
-	int hmax = h + h_high, smax = 255, vmax = 255;
-	Scalar lower(hmin, smin, vmin);
-	Scalar upper(hmax, smax, vmax);
-	inRange(img, lower, upper, img);//二值化
-	
-	morphologyEx(img,img,3,kernel);//闭运算
-	
-	morphologyEx(img,img,2,kernel1);//开运算
+    medianBlur(img, imgblur, 9);
 
-	Canny(img, img, 50 ,50);//Canny
-	
-	Mat d_kernel = getStructuringElement(MORPH_RECT, Size(dilate_size, dilate_size));//扩张核
-	
-	dilate(img, img, d_kernel);//扩张
-	
-}
-```
+    medianBlur(img0, imgblur, 9);
 
-##### low_pre
+    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);
+    for (int row = 0; row < img.rows; row++)
+    {
+        for (int col = 0; col < img.cols; col++)
+        {
+            if (erZhi.at<uchar>(row, col) == 255)  //uchar类型
+            {
+                img0.at<Vec3b>(row, col) = imgblur.at<Vec3b>(row, col); //vector<uchar,3>
+            }
+        }
+    }
 
-```C++
-void myimg::low_pre()
-{
-	//预处理:灰度,边际检测,扩张
-	cvtColor(img, img, COLOR_BGR2GRAY);
+    bilateralFilter(img0, imgblur, 15, 25, 15 / 2); //双边滤波
+    cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//Blue... to Gray
 
-	Canny(img , img ,25 , 60);
-	
-    Mat d_kernel_2 = getStructuringElement(MORPH_RECT, Size(2, 2));
-	dilate(img, img, d_kernel_2);
-}
-```
+    split(imgHsv, mvt);
 
-##### get_contours
+    //图片识别
 
-````C++
-void myimg::get_contours()
-{
-	findContours(img, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_NONE);//获取轮廓并将点存进contours中
-	
-    drawContours(img_draw, contours, -1, Scalar(255, 0, 255), 2);//在显示图像上画轮廓
+    // // 中低级图片
+    // inRange(imgGray, imgGray.at<uchar>(0, 0) - 50, imgGray.at<uchar>(0, 0) + 50, dstimage);
+    // Canny(dstimage, imgCanny, 15, 45);
+    // dilate(imgCanny, imgDil, kernel);
+    // erode(imgDil, imgErode, kernel);
+    // findContours(imgErode, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);//find contours
 
-	vector<vector<Point>> conPoly(contours.size());//存放角点
-	vector<Rect> boundRect(contours.size());//存放外接矩形点
+    //高级图片
+    int hist0 = drawHist(mvt[0]);
+    int hist1 = drawHist(mvt[1]);
+    int hist2 = drawHist(mvt[2]);
+    //初始化输出图像迭代器
+    cv::MatIterator_<cv::uint8_t> IterStart = mvt[0].begin<cv::uint8_t>();
+    cv::MatIterator_<cv::uint8_t> IterEnd = mvt[0].end<cv::uint8_t>();
+    cv::MatIterator_<cv::uint8_t> IterStart1 = mvt[1].begin<cv::uint8_t>();
+    cv::MatIterator_<cv::uint8_t> IterStart2 = mvt[2].begin<cv::uint8_t>();
+    // 遍历图像反色处理
+    while (IterStart != IterEnd)
+    {
+        if ((*IterStart) > (hist0 + 2) || (*IterStart) < (hist0 - 2) ||
+            (*IterStart1) > (hist1 + 50) || (*IterStart1) < (hist1 - 20) ||
+            (*IterStart2) > (hist2 + 50) || (*IterStart2) < (hist2 - 20))
+        {
+            (*IterStart) = 255;
+        }
+        else
+        {
+            (*IterStart) = 0;
+        }
+        // 迭代器递增
+        IterStart++;
+        IterStart2++;
+    }
+    erode(mvt[0], imgErode, kernel);
+    dilate(imgErode, imgDil, kernel);
+    findContours(imgErode, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);//find contours
 
-	for (int i = 0; i < contours.size(); i++)
-	{
-		int area = contourArea(contours[i]);//获取面积
+    vector<vector<Point>> conPoly(contours.size());
+    vector<Rect> boundRect(contours.size());
 
-		string objectType;//记录图形类型
+    cout << contours.size() << endl;
+    for (int i = 0; i < contours.size(); i++) {
+        int area = contourArea(contours[i]);
+        string objectType;
+        if (area > 100) {
+            float peri = arcLength(contours[i], true) - 20;//是否轮廓参数等关闭闭合 若为true，则说明近似曲线是闭合的；反之，若为false，则断开
 
-		if (500 < area)//进行筛选,去除面积过小的噪声
-		{
-			float peri = arcLength(contours[i], true);
-			approxPolyDP(contours[i], conPoly[i], 0.02 * peri, true);//获得角点
-			drawContours(img_draw, conPoly, i, Scalar(255, 0, 255), 2);//连线
+            cout << peri << endl;
+            approxPolyDP(contours[i], conPoly[i], 0.0275 * peri, true);//approxPolyDP()函数是opencv中对指定的点集进行多边形逼近的函数，其逼近的精度可通过参数设置。
+            int objCor = (int)conPoly[i].size();
+            if (objCor == 3) { objectType = "Trilateral3"; num3++; }
+            else if (objCor == 4) { objectType = "Quadrilateral4"; num4++; }
+            else if (objCor == 5) { objectType = "Pentagon5"; num5++; }
+            else if (objCor == 6) { objectType = "Hexagon6"; num6++; }
+            else if (objCor == 7) { objectType = "Heptagon7"; num7++; }
+            else if (objCor == 8) { objectType = "Octagon8"; num8++; }
+            else { objectType = "Pentagram10"; num10++; }
 
-			//cout << conPoly[i].size() << endl;
-			boundRect[i] = boundingRect(conPoly[i]);
-			rectangle(img_draw, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 5);//用矩形框住图形
-
-
-			int objCor = (int)conPoly[i].size();//获得角点个数
-			//根据角点个数判断图形并显示
-			if (objCor == 3) { objectType = "3Tri"; }
-			if (objCor == 4) {
-				float aspRatio = (float)boundRect[i].width / (float)boundRect[i].height;
-				if (aspRatio < 0.95 && aspRatio < 1.05) { objectType = "4Square"; }
-				else { objectType = "4Rect"; }
-			}
-			if (objCor == 5) { objectType = "5pentagon"; }
-			if (objCor == 6) { objectType = "6hexagon"; }
-			if (objCor == 7) { objectType = "7heptagon"; }
-			if (objCor == 8) { objectType = "8octagon"; }
-			if (objCor == 10 || objCor == 9) { objectType = "star"; }
-			if (objCor > 10) { objectType = "Circle"; }
-			
-			putText(img_draw, objectType, { boundRect[i].x,boundRect[i].y - 5 }, FONT_HERSHEY_DUPLEX, 0.75, Scalar(0, 69, 255), 2);
-		}
-	}
-
-}
-````
-
-##### treat
-
-````C++
-void myimg::test_high_treat(string path, int median_blur, int h_high, int h_low,int size,int size_1, int dilate_size)
-{
-	Mat temp_img1 = imread(path);
-	Mat temp_img2 = imread(path);
-	load_img(temp_img1);     		//载入处理图像
-	load_img_draw(temp_img2);		//载入显示图像
-
-	test_pre(median_blur, h_high, h_low,size,size_1, dilate_size);//预处理
-	get_contours();												  //获得轮廓
-}
-
-void myimg::test_low_treat(string path)
-{
-	Mat temp_img1 = imread(path);
-	Mat temp_img2 = imread(path);
-	load_img(temp_img1);
-	load_img_draw(temp_img2);
-
-	low_pre();
-	get_contours();
+            boundRect[i] = boundingRect(conPoly[i]);
+            rectangle(img, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 1);
+            putText(img, objectType, { boundRect[i].x,boundRect[i].y - 5 }, FONT_HERSHEY_PLAIN, 1, Scalar(0, 69, 255), 2);//FONT字体
+            cout << objectType << endl;
+            cout << conPoly[i].size() << endl;//输出多边形边数
+            cout << "多边形 " << i + 1 << " 有 " << conPoly[i].size() << " 条边" << endl;
+        }
+    }
+    cout << "三边形数量  " << num3 << endl; cout << "四边形数量  " << num4 << endl; cout << "五边形数量  " << num5 << endl;
+    cout << "六边形数量  " << num6 << endl; cout << "七边形数量  " << num7 << endl; cout << "八边形数量  " << num8 << endl;
+    cout << "星形状数量  " << num10 << endl;
+    imshow("Detected Shapes", img);
+    waitKey(0);
 }
 ````
 
-##### show_result
 
-````C++
-void myimg::show_result(string name)
-{
-	//resize(img_draw, img_draw, Size(), 0.4, 0.4);  //根据需要调整最终显示的大小
-	imshow(name, img_draw);
-}
-````
 
 ### main
 
 ```C++
-#include"include/get_contours.h"
-#include"include/headline.h"
-#include <conio.h>
-
-#define low			//区分中低级难度与高级难度
-
-int main()
-{
-    //对高级图像处理
-	#ifndef low
 	
-	
-	//median_blur , h_high , h_low, size , size_1 , dilate_size;
-	int Median_blur = 3, H_high = 1, H_low = 1,size = 2,size_1=2, Dilate_size = 2;
-	
-	
-	//创建滑动条
-	namedWindow("Trackbars", (640, 200));
-	createTrackbar("median_blur", "Trackbars", &Median_blur, 30);
-	createTrackbar("h_high", "Trackbars", &H_high, 10);
-	createTrackbar("h_low", "Trackbars", &H_low, 10);
-	createTrackbar("size", "Trackbars", &size, 20);
-	createTrackbar("size_1", "Trackbars", &size_1, 20);
-	createTrackbar("dilate_size", "Trackbars", &Dilate_size, 15);
-	
-	while (1)
-	{	
-		int true_median_blur=Median_blur*2-1;//获取真实中值滤波参数(该参数只能为奇数)
-		
-		myimg photo1, photo2, photo3, photo4;
-        
-        //获取图像路径
-		string path1 = "/home/qiuzhenhua/robotgame/photo/high/1.jpg";
-		// string path2 = "/home/qiuzhenhua/robotgame/photo/high/2.jpg";
-		// string path3 = "/home/qiuzhenhua/robotgame/photo/high/3.jpg";
-		// string path4 = "/home/qiuzhenhua/robotgame/photo/high/4.jpg";
-        
-        //处理图像
-		photo1.test_high_treat(path1 , true_median_blur , H_high , H_low,size ,size_1 , Dilate_size);
-		// photo2.test_treat(path2 , true_median_blur , H_high , H_low,size ,size_1 , Dilate_size);
-		// photo3.test_treat(path3 , true_median_blur , H_high , H_low,size ,size_1 , Dilate_size);
-		// photo4.test_treat(path4 , true_median_blur , H_high , H_low,size ,size_1 , Dilate_size);
-        
-        //显示图像
-		photo1.show_result("img1");
-		// photo2.show_result("img2");
-		// photo3.show_result("img3");
-		// photo4.show_result("img4");
-		// }
-
-	}
-	#endif
-
-    //对低级处理
-	#ifdef low
-		myimg photo1, photo2, photo3, photo4;
-		string path1 = "/home/qiuzhenhua/robotgame/photo/low/1.jpg";
-		photo1.test_low_treat(path1);
-		photo1.show_result("img1");
-		waitKey(0);
-	#endif
-    
-	return 0;
+#include "findcontours.h"
+//main函数只需要传入图片路径，调用ShapeDetector类中的detectShapes函数即可
+int main() {
+    ShapeDetector shapeDetector("school_robot/low/1.jpg");
+    //ShapeDetector shapeDetector("school_robot/middle/1.jpg"); //中低级图片识别代码相同，请移至detectShapes函数中修改
+    //ShapeDetector shapeDetector("school_robot/high/2.jpg"); //高级图片识别单独一套代码，请移至detectShapes函数中修改
+    shapeDetector.detectShapes();
+    return 0;
 }
 ```
