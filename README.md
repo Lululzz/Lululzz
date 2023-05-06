@@ -1,11 +1,11 @@
-﻿## 视觉
+﻿## 车车难造队—视觉-卢峥
 
-### 预处理大致思路
+### 大致思路
 
 - 中低级图片的识别
   - 将输入图片利用inrange函数进行二值化处理，使用Canny边缘检测器对二值化后的图像进行检测，接着进行开闭操作处理后findcontours.
 
-- 对高级
+- 高级图片的识别
   - 由于笔者高级图片的识别办法运用到了直方图等知识，笔者将在此详细对代码进行解读
   - 首先，它定义了一个名为drawHist的函数，以一个名为image的Mat对象作为其参数。这个函数计算并返回输入图像中最频繁的像素值。
   - 该函数的第一行声明了一个整数变量numbins并将其初始化为256。这个值代表了将用于创建直方图的bin或divisions的数量。
@@ -238,6 +238,7 @@ void ShapeDetector::detectShapes() {
 #include "findcontours.h"
 //main函数只需要传入图片路径，调用ShapeDetector类中的detectShapes函数即可
 int main() {
+    //操作时仅修改图片路径即可
     ShapeDetector shapeDetector("school_robot/low/1.jpg");
     //ShapeDetector shapeDetector("school_robot/middle/1.jpg"); //中低级图片识别代码相同，请移至detectShapes函数中修改
     //ShapeDetector shapeDetector("school_robot/high/2.jpg"); //高级图片识别单独一套代码，请移至detectShapes函数中修改
