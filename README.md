@@ -42,7 +42,7 @@
 
 using namespace cv;
 using namespace std;
-  using namespace std;
+using namespace std;
   ```
 
 ### get_contours.h
@@ -98,14 +98,15 @@ private:
 ```C++
 //绘制直方图
 //直方图就是用来统计图像的像素信息的，每个颜色级像素的数量是多少，占整幅图像的比例
-int drawHist(Mat image)
+int drawHist(Mat image)//这个函数计算并返回输入图像中最频繁的像素值。
 {
-    int numbins = 256;
-    float range[] = { 0, 256 }; //定义一个浮点型的一维数组，含两个值
-    const float* histRange = { range };//直方图均衡化
-    Mat hist;
+    int numbins = 256; //这个值代表了将用于创建直方图的bin或divisions的数量。
+    float range[] = { 0, 256 }; //定义了一个名为range的浮动数组，有两个元素，0和256。这个数组将被用作直方图的取值范围。
+    const float* histRange = { range };//直方图均衡化 浮点数组的指针，并将其分配给范围数组的地址。这个指针将在后面用来指定直方图的取值范围。
+    Mat hist; //它将被用来存储直方图
 
     calcHist(&image, 1, 0, Mat(), hist, 1, &numbins, &histRange);//计算图像直方图 统计每个颜色值级别的像素一共有多少
+    //调用calcHist函数来计算输入图像的直方图。传递给该函数的参数是：&image：对输入图像的一个；1：图像的数量（本例中只有一个）；0：用于直方图的通道的索引（0表示灰阶）；Mat(): 应用于图像的可选遮罩（在本例中不使用）；hist：将存储直方图的Mat对象；1：要计算的直方图的数量（本例中只有一个）；&numbins：用于直方图的bin的数量；&histRange：直方图的取值范围。
 
     float max = 0;
     int nn = 0;
@@ -118,7 +119,7 @@ int drawHist(Mat image)
         }
     }
     return nn;
-}
+}//在每次迭代中，它将直方图中当前bin的值与当前的最大值（max）进行比较，如果当前bin的值更高，则更新nn和max。最后，该函数返回nn的值，它代表输入图像中最频繁的像素值。注意，输入图像中的像素值必须在[0, 255]范围内，这个函数才能正常工作，因为这是范围数组中指定的范围。如果输入图像有不同的数值范围，范围数组应作相应调整。
 ```
 
 ##### detectShapes
@@ -136,7 +137,7 @@ void ShapeDetector::detectShapes() {
 
     medianBlur(img0, imgblur, 9);
 
-    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);
+    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);//代码将图像分割成三个颜色通道（色相、饱和度和值），并计算每个通道的直方图.直方图被用来寻找图像中的主导颜色，然后用来进一步对图像进行阈值处理。
     for (int row = 0; row < img.rows; row++)
     {
         for (int col = 0; col < img.cols; col++)
@@ -149,6 +150,7 @@ void ShapeDetector::detectShapes() {
     }
 
     bilateralFilter(img0, imgblur, 15, 25, 15 / 2); //双边滤波
+    
     cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//Blue... to Gray
 
     split(imgHsv, mvt);
@@ -156,6 +158,7 @@ void ShapeDetector::detectShapes() {
     //图片识别
 
     // // 中低级图片
+    
     // inRange(imgGray, imgGray.at<uchar>(0, 0) - 50, imgGray.at<uchar>(0, 0) + 50, dstimage);
     // Canny(dstimage, imgCanny, 15, 45);
     // dilate(imgCanny, imgDil, kernel);
@@ -204,6 +207,7 @@ void ShapeDetector::detectShapes() {
 
             cout << peri << endl;
             approxPolyDP(contours[i], conPoly[i], 0.0275 * peri, true);//approxPolyDP()函数是opencv中对指定的点集进行多边形逼近的函数，其逼近的精度可通过参数设置。
+	    //该函数需要两个参数：原始轮廓和原始轮廓与其近似值之间的最大距离。然后，近似值根据它的边数被归类为一个特定的形状。
             int objCor = (int)conPoly[i].size();
             if (objCor == 3) { objectType = "Trilateral3"; num3++; }
             else if (objCor == 4) { objectType = "Quadrilateral4"; num4++; }
