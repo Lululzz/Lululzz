@@ -23,12 +23,13 @@
 
 - 使用findContours函数在二进制图像中找到轮廓，并使用 approxPolyDP函数对每个轮廓进行近似处理。得到的多边形被存储在一个名为conPoly的向量中，其边界矩形被存储在一个名为boundRect的向量中。 然后，代码通过迭代conPoly中的多边形，并使用多边形顶点上的size函数计算边数，从而计算出具有3、4、5个顶点的形状的数量。计数结果用cout函数打印到控制台。
 
+
 ### headline.h
 
 - 包含了运行所需要的头文件
 
-  ```c++
-  #include <opencv2/imgcodecs.hpp>
+```c++
+#include <opencv2/imgcodecs.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
