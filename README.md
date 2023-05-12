@@ -25,13 +25,29 @@
   - 总的来说，这段代码实现了一种形状检测算法，它使用OpenCV的图像处理功能对输入图像进行分割和预处理，提取每个颜色通道的主导颜色，隔离颜色相似的区域，并将得到的形状近似为多边形。
 - 补充
 
-  -迭代器：迭代器是一种极为方便的可以遍历数组或集合的方法，使用opencv的自带的Mat中的迭代器，可以方便的进行遍历数组操作。在迭代法中，你所需要做的仅仅是获得图像矩阵的begin和end，然后增加迭代直至从begin到end。将*操作符添加在迭代指针前，即可访问当前指向的内容。对于一个cv::Mat的实例，你可以通过image.begin<cv::Vec3b>()来得到图像左上角位置的迭代器。如果想从第二行开始，可以使用image.begin<cv::Vec3b>()+image.rows来初始化迭代器。
-注意：如果你的操作对象是const cv::Mat,或者你想强调当前当前循环不会对CV：：Mat的实例进行修改，那么你就因该创建常量迭代器。常量迭代器的声明如下：
-cv::Mat ConstIterator_<cv::Vec3b>it;
-或者：
-cv::Mat_<cv::Vec3b> ::Const_Iterator it;
+  -直方图：在图像处理上，直方图是图像信息统计的有力工具。其实也就是统计一幅图某个亮度像素数量。直方图的规范化主要完成的任务是提高图像的对比度，实现过程主要如下，将灰度图像的的直方图计算出来，然后通过将不均匀的直方图进行拉伸（即对原图像中的灰度图进行调整）使得整个直方图灰度分布较为平均，这样得到的图像的对比度较高。是预处理阶段较为常见的而有效的图像处理手段。
+  
+  -void calcHist( const Mat* images, int nimages,
+                          const int* channels, InputArray mask,
+                          OutputArray hist, int dims, const int* histSize,
+                          const float** ranges, bool uniform=true, bool accumulate=false );
+参数解释：images：输入的图像的指针； nimages：输入图像个数；channels：需要统计直方图的第几通道； mask：掩模，mask必须是一个8位（CV_8U）的数组并且和images的数组大小相同； hist：直方图计算的输出值； dims：输出直方图的维度（由channels指定）； histSize：直方图中每个dims维度需要分成多少个区间（如果把直方图看作一个一个竖条的话，就是竖条的个数）； ranges：统计像素值的区间；uniform=true：是否对得到的直方图数组进行归一化处理； accumulate=false：在多个图像时，是否累积计算像素值的个数；
 
-  -直方图：直方图的规范化主要完成的任务是提高图像的对比度，实现过程主要如下，将灰度图像的的直方图计算出来，然后通过将不均匀的直方图进行拉伸（即对原图像中的灰度图进行调整）使得整个直方图灰度分布较为平均，这样得到的图像的对比度较高。是预处理阶段较为常见的而有效的图像处理手段。最简单的直方图是线性变换通过对密集区域的拉伸实现灰度的平均分布。但有时难以达到理想的效果，所以一种改进的的方法可以对原图像的灰度直方图进行分段，分为拉伸端和压缩段已达到更好的效果。另一种改进的方法是先设计一种灰度拉伸的结果然建立原图像的灰度直方图和拉升后的灰度直方图的映射，可以不同于原图像分布的可以订制的直方图分布。
+   -双边滤波：中值滤波，高斯滤波等单纯地考虑空间信息，造成了边界模糊和部分信息的丢失。双边滤波（Bilateral filter）是一种非线性的滤波方法，本质是基于高斯滤波，目的是解决高斯滤波造成的边缘模糊。结合图像的空间邻近度和像素值相似度的一种折处理，同时考虑空域信息和灰度相似性，达到保边去噪的目的。具有简单、非迭代、局部的特点。双边滤波器的好处是可以做边缘保存（edge preserving），一般用高斯滤波去降噪，会较明显地模糊边缘，对于高频细节的保护效果并不明显。双边滤波器顾名思义比高斯滤波多了一个高斯核。它是基于像素颜色分布的高斯滤波函数，所以在边缘附近，当两个像素距离很近时，只有同时当颜色很接近时影响才会较大，反之，虽然距离很近，但颜色差距较大，那么平滑权重也会很小。这样就保证了边缘附近像素值的保持，起到了保边的效果。
+    在OpenCV中，实现双边滤波的函数是cv2.bilateralFilter（），该函数的语法是：dst=cv2.bilateralFilter（src,d,sigmaColor,sigmaSpace,borderType）
+        式中：
+        ● dst是返回值，表示进行双边滤波后得到的处理结果。
+        ● src 是需要处理的图像，即原始图像。它能够有任意数量的通道，并能对各通道独立处理。图像深度应该是CV_8U、CV_16U、CV_16S、CV_32F或者CV_64F中的一 种。   
+        ● d是在滤波时选取的空间距离参数，这里表示以当前像素点为中心点的直径。如果该值为非正数，则会自动从参数 sigmaSpace 计算得到。如果滤波空间较大（d>5），则速度较慢。因此，在实时应用中，推荐d=5。对于较大噪声的离线滤波，可以选择d=9。
+        ● sigmaColor是滤波处理时选取的颜色差值范围，该值决定了周围哪些像素点能够参与到滤波中来。与当前像素点的像素值差值小于 sigmaColor 的像素点，能够参与到当前的滤波中。该值越大，就说明周围有越多的像素点可以参与到运算中。该值为0时，滤波失去意义；该值为255时，指定直径内的所有点都能够参与运算。
+        ● sigmaSpace是坐标空间中的sigma值。它的值越大，说明有越多的点能够参与到滤波计算中来。当d>0时，无论sigmaSpace的值如何，d都指定邻域大小；否则，d与 sigmaSpace的值成比例。
+        ● borderType是边界样式，该值决定了以何种方式处理边界。一般情况下，不需要考虑该值，直接采用默认值即可。
+        为了简单起见，可以将两个sigma（sigmaColor和sigmaSpace）值设置为相同的。如果它们的值比较小（例如小于10），滤波的效果将不太明显；如果它们的值较大（例如大于150），则滤波效果会比较明显，会产卡通效果。
+        在函数cv2.bilateralFilter（）中，参数borderType是可选参数，其余参数全部为必选参数。
+  
+   -迭代器：迭代器是一种极为方便的可以遍历数组或集合的方法，使用opencv的自带的Mat中的迭代器，可以方便的进行遍历数组操作。迭代器是一种检查容器内元素并遍历元素的数据类型。迭代器提供对一个容器中的对象的访问方法，并且定义了容器中对象的范围。迭代器（Iterator）是指针（pointer）的泛化，它允许程序员用相同的方式处理不同的数据结构（容器）。在迭代法中，你所需要做的仅仅是获得图像矩阵的begin和end，然后增加迭代直至从begin到end。将*操作符添加在迭代指针前，即可访问当前指向的内容。对于一个cv::Mat的实例，你可以通过image.begin<cv::Vec3b>()来得到图像左上角位置的迭代器。如果想从第二行开始，可以使用image.begin<cv::Vec3b>()+image.rows来初始化迭代器。根据迭代器实现的不同功能，C++迭代器分为：输入迭代器，输出迭代器，正向迭代器，双向迭代器，随机迭代器。在这里只介绍代码中运用到的输出迭代器：输出迭代器。向容器中写入元素。输出迭代器只能一次一个元素向前移动。输出迭代器只支持一遍算法，同一输出迭代器不能两次遍历一个序列。
+   
+   
 ### 对于图形的判断
 
 - 使用findContours函数在二进制图像中找到轮廓，并使用 approxPolyDP函数对每个轮廓进行近似处理。得到的多边形被存储在一个名为conPoly的向量中，其边界矩形被存储在一个名为boundRect的向量中。 然后，代码通过迭代conPoly中的多边形，并使用多边形顶点上的size函数计算边数，从而计算出具有多个顶点的形状的数量。计数结果用cout函数打印到控制台。
@@ -48,7 +64,6 @@ cv::Mat_<cv::Vec3b> ::Const_Iterator it;
 #include <iostream>
 
 using namespace cv;
-using namespace std;
 using namespace std;
   ```
 
@@ -144,7 +159,7 @@ void ShapeDetector::detectShapes() {
 
     medianBlur(img0, imgblur, 9);
 
-    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);//代码将图像分割成三个颜色通道（色相、饱和度和值），并计算每个通道的直方图.直方图被用来寻找图像中的主导颜色，然后用来进一步对图像进行阈值处理。
+    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);
     for (int row = 0; row < img.rows; row++)
     {
         for (int col = 0; col < img.cols; col++)
@@ -156,9 +171,9 @@ void ShapeDetector::detectShapes() {
         }
     }
 
-    bilateralFilter(img0, imgblur, 15, 25, 15 / 2); //双边滤波
+    bilateralFilter(img0, imgblur, 30, 28, 15 / 2); //双边滤波
     
-    cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//Blue... to Gray
+    cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//代码将图像分割成三个颜色通道（色相、饱和度和值），并计算每个通道的直方图.直方图被用来寻找图像中的主导颜色，然后用来进一步对图像进行阈值处理。
 
     split(imgHsv, mvt);
 
@@ -185,8 +200,8 @@ void ShapeDetector::detectShapes() {
     while (IterStart != IterEnd)
     {
         if ((*IterStart) > (hist0 + 2) || (*IterStart) < (hist0 - 2) ||
-            (*IterStart1) > (hist1 + 50) || (*IterStart1) < (hist1 - 20) ||
-            (*IterStart2) > (hist2 + 50) || (*IterStart2) < (hist2 - 20))
+            (*IterStart1) > (hist1 + 150) || (*IterStart1) < (hist1 - 150) ||
+            (*IterStart2) > (hist2 + 200) || (*IterStart2) < (hist2 - 20))
         {
             (*IterStart) = 255;
         }
@@ -250,9 +265,9 @@ void ShapeDetector::detectShapes() {
 //main函数只需要传入图片路径，调用ShapeDetector类中的detectShapes函数即可
 int main() {
     //操作时仅修改图片路径即可
-    ShapeDetector shapeDetector("school_robot/low/1.jpg");
+    //ShapeDetector shapeDetector("school_robot/low/1.jpg");
     //ShapeDetector shapeDetector("school_robot/middle/1.jpg"); //中低级图片识别代码相同，请移至detectShapes函数中修改
-    //ShapeDetector shapeDetector("school_robot/high/2.jpg"); //高级图片识别单独一套代码，请移至detectShapes函数中修改
+    ShapeDetector shapeDetector("school_robot/high/1.jpg"); //高级图片识别单独一套代码，请移至detectShapes函数中修改
     shapeDetector.detectShapes();
     return 0;
 }
