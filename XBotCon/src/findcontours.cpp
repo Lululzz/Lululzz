@@ -49,7 +49,7 @@ void ShapeDetector::detectShapes() {
         }
     }
 
-    bilateralFilter(img0, imgblur, 15, 25, 15 / 2); //双边滤波
+    bilateralFilter(img0, imgblur, 30, 28, 15 / 2); //双边滤波
 
     cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//Blue... to Gray
 
@@ -78,8 +78,8 @@ void ShapeDetector::detectShapes() {
     while (IterStart != IterEnd)
     {
         if ((*IterStart) > (hist0 + 2) || (*IterStart) < (hist0 - 2) ||
-            (*IterStart1) > (hist1 + 50) || (*IterStart1) < (hist1 - 20) ||
-            (*IterStart2) > (hist2 + 50) || (*IterStart2) < (hist2 - 20))
+            (*IterStart1) > (hist1 + 150) || (*IterStart1) < (hist1 - 200) ||
+            (*IterStart2) > (hist2 + 200) || (*IterStart2) < (hist2 - 20))
         {
             (*IterStart) = 255;
         }
