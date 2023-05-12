@@ -29,26 +29,7 @@ int drawHist(Mat image)//这个函数计算并返回输入图像中最频繁的�
 void ShapeDetector::detectShapes() {
     //Preprocessing
     Mat img = imread(this->imagePath);
-    Mat img0 = img.clone();//拷贝图片 方式为深拷贝
-
-    cvtColor(img, imgGray, COLOR_BGR2GRAY);//Blue... to Gray
-
-    medianBlur(img, imgblur, 9);
-
-    medianBlur(img0, imgblur, 9);
-
-    threshold(imgGray, erZhi, 50, 255, THRESH_BINARY_INV);//代码将图像分割成三个颜色通道（色相、饱和度和值），并计算每个通道的直方图.直方图被用来寻找图像中的主导颜色，然后用来进一步对图像进行阈值处理。
-    for (int row = 0; row < img.rows; row++)
-    {
-        for (int col = 0; col < img.cols; col++)
-        {
-            if (erZhi.at<uchar>(row, col) == 255)  //uchar类型
-            {
-                img0.at<Vec3b>(row, col) = imgblur.at<Vec3b>(row, col); //vector<uchar,3>
-            }
-        }
-    }
-
+  
     bilateralFilter(img0, imgblur, 30, 28, 15 / 2); //双边滤波
 
     cvtColor(imgblur, imgHsv, COLOR_BGR2HSV);//Blue... to Gray
@@ -78,8 +59,8 @@ void ShapeDetector::detectShapes() {
     while (IterStart != IterEnd)
     {
         if ((*IterStart) > (hist0 + 2) || (*IterStart) < (hist0 - 2) ||
-            (*IterStart1) > (hist1 + 150) || (*IterStart1) < (hist1 - 200) ||
-            (*IterStart2) > (hist2 + 200) || (*IterStart2) < (hist2 - 20))
+            (*IterStart1) > (hist1 + 200) || (*IterStart1) < (hist1 - 200) ||
+            (*IterStart2) > (hist2 + 150) || (*IterStart2) < (hist2 - 20))
         {
             (*IterStart) = 255;
         }
